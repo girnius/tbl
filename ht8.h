@@ -22,19 +22,19 @@
 
 struct ht8;
 
-struct ht8 *ht8_create(const char *(*getkey)(void *item));
+struct ht8 *ht8_create(const char *(*getkey)(void *value));
 
-int ht8_add(struct ht8 *ht, const char *key, void *item);
-void *ht8_find(struct ht8 *ht, const char *key);
+int ht8_put(struct ht8 *ht, const char *key, void *value);
+void *ht8_get(struct ht8 *ht, const char *key);
 void *ht8_remove(struct ht8 *ht, const char *key);
 
-int ht8_iterate(struct ht8 *ht, int (*iter)(void *item, void *ctx), void *ctx);
+int ht8_iterate(struct ht8 *ht, int (*iter)(void *value, void *ctx), void *ctx);
 int ht8_copy(struct ht8 *dest, struct ht8 *src);
 int ht8_renew(struct ht8 *ht);
 void ht8_clean(struct ht8 *ht);
 int ht8_grow(struct ht8 *ht);
 
-void ht8_setfunc(struct ht8 *ht, const char *(*getkey)(void *item));
+void ht8_setfunc(struct ht8 *ht, const char *(*getkey)(void *value));
 uint32_t ht8_getnum(struct ht8 *ht);
 
 void ht8_free(struct ht8 *ht);

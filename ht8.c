@@ -39,7 +39,7 @@ struct ht8{
 	uint64_t n_entries;
 	uint32_t max;
 	uint32_t max_lg2;
-	const char *(*getkey)(void *item);
+	const char *(*getkey)(void *value);
 };
 
 static struct ht8_list *_list_create(void)
@@ -47,11 +47,11 @@ static struct ht8_list *_list_create(void)
 	return calloc(0, sizeof(struct ht8_list));
 }
 
-static int _list_add(struct ht8_list *l, void *item)
+static int _list_add(struct ht8_list *l, void *value)
 {
 	for (int i=0; i < _LIST_ENTRIES_N; i++){
 		if (!l->entries[i]){
-			l->entries[i] = item;
+			l->entries[i] = value;
 			return 0;
 		}
 	}
@@ -59,17 +59,18 @@ static int _list_add(struct ht8_list *l, void *item)
 	if (!newlist)
 		return -1;
 	l->next = newlist;
-	newlist->entries[0] = item;
+	newlist->entries[0] = value;
 	return 0;
 }
 
-static void *_list_find(struct ht8_list *l, struct ht8 *ht, const char *key)
+static void *_list_get(struct ht8_list *l, struct ht8 *ht, const char *key)
 {
 	struct ht8_list *curr = l;
 	do{
 		for (int i =0; i < _LIST_ENTRIES_N; i++){
 			if (curr->entries[i]){
-				const char *entrykey = ht->getkey(curr->entries[i]);
+				const char *entrykey =
+						ht->getkey(curr->entries[i]);
 				if (!strcmp(key, entrykey))
 					return curr->entries[i];
 			}
@@ -85,7 +86,8 @@ static void *_list_remove(struct ht8_list *l, struct ht8 *ht, const char *key)
 	do{
 		for (int i =0; i < _LIST_ENTRIES_N; i++){
 			if (curr->entries[i]){
-				const char *entrykey = ht->getkey(curr->entries[i]);
+				const char *entrykey =
+						ht->getkey(curr->entries[i]);
 				if (!strcmp(key, entrykey)){
 					void *ret = curr->entries[i];
 					curr->entries[i] = NULL;
@@ -110,7 +112,7 @@ static void _list_free(struct ht8_list *l)
 	return;
 }
 
-static struct ht8* _create(uint32_t max_lg2, const char *(*getkey)(void *item))
+static struct ht8* _create_with_sizelog2(uint32_t max_lg2, const char *(*getkey)(void *value))
 {
 	struct ht8 *ht = malloc(sizeof(struct ht8));
 	if (!ht)
@@ -128,24 +130,34 @@ static struct ht8* _create(uint32_t max_lg2, const char *(*getkey)(void *item))
 	return ht;
 }
 
-struct ht8* ht8_create(const char *(*getkey)(void *item))
+static const char *_getkey_default(void *value)
 {
-	assert(getkey);
-	return _create(ceil(log2(HT8_DEFAULT_BUCKETS_N)), getkey);
+	return (const char*)value;
+}
+
+struct ht8* ht8_create(const char *(*getkey)(void *value))
+{
+	if (getkey)
+		return _create_with_sizelog2(
+				ceil(log2(HT8_DEFAULT_BUCKETS_N)), getkey);
+	else
+		return _create_with_sizelog2(
+				ceil(log2(HT8_DEFAULT_BUCKETS_N)),
+						_getkey_default);
 }
 
 
-static int _add(struct ht8 *ht, uint32_t hash, void *item)
+static int _put_with_hash(struct ht8 *ht, uint32_t hash, void *value)
 {
-	assert(ht && item);
+	assert(ht && value);
 	uint32_t pos = (uint32_t)hash & ~(UINT32_MAX << ht->max_lg2);
 	if (!ht->t[pos].e1){
-		ht->t[pos].e1 = item;
+		ht->t[pos].e1 = value;
 	}else if (!ht->t[pos].e2){
-		ht->t[pos].e2 = item;
+		ht->t[pos].e2 = value;
 	}else{
 		if (ht->t[pos].is_list == ht){
-			if (_list_add(ht->t[pos].list, item))
+			if (_list_add(ht->t[pos].list, value))
 				return -1;
 		}else{
 			struct ht8_list *l = _list_create();
@@ -153,7 +165,7 @@ static int _add(struct ht8 *ht, uint32_t hash, void *item)
 				return -1;
 			_list_add(l, ht->t[pos].e1);
 			_list_add(l, ht->t[pos].e2);
-			_list_add(l, item);
+			_list_add(l, value);
 			ht->t[pos].is_list = ht;
 			ht->t[pos].list = l;
 		}
@@ -162,20 +174,20 @@ static int _add(struct ht8 *ht, uint32_t hash, void *item)
 	return 0;
 }
 
-int ht8_add(struct ht8 *ht, const char *key, void *item)
+int ht8_put(struct ht8 *ht, const char *key, void *value)
 {
-	assert(ht && key && item);
+	assert(ht && key && value);
 	uint64_t hash = XXH64(key, strlen(key), ht->seed);
 	if (ht->n_entries > ht->max - (ht->max / HT8_MIN_FREE_BUCKETS_RATIO)){
 		ht8_grow(ht);
 	}
-	if (!_add(ht, (uint32_t)hash, item))
+	if (!_put_with_hash(ht, (uint32_t)hash, value))
 		return 0;
 	else
 		return -1;
 }
 
-void *ht8_find(struct ht8 *ht, const char *key)
+void *ht8_get(struct ht8 *ht, const char *key)
 {
 	assert(ht && key);
 	uint64_t hash = XXH64(key, strlen(key), ht->seed);
@@ -188,7 +200,7 @@ void *ht8_find(struct ht8 *ht, const char *key)
 			found = ht->t[pos].e2;
 		}else{
 			if (ht->t[pos].is_list == ht)
-				return _list_find(ht->t[pos].list, ht, key);
+				return _list_get(ht->t[pos].list, ht, key);
 		}
 	}
 	if (!strcmp(ht->getkey(found), key))
@@ -226,7 +238,7 @@ void *ht8_remove(struct ht8 *ht, const char *key)
 	}
 }
 
-int ht8_iterate(struct ht8 *ht, int (*iter)(void *item, void *ctx), void *ctx)
+int ht8_iterate(struct ht8 *ht, int (*iter)(void *value, void *ctx), void *ctx)
 {
 	int ret = 0;
 	assert(ht && iter);
@@ -256,11 +268,11 @@ int ht8_iterate(struct ht8 *ht, int (*iter)(void *item, void *ctx), void *ctx)
 	return ret;
 }
 
-static int _copy_iter(void *item, void *ctx)
+static int _copy_iter(void *value, void *ctx)
 {
-	assert(item && ctx);
+	assert(value && ctx);
 	struct ht8 *ht = (struct ht8*)ctx;
-	if(ht8_add(ht, ht->getkey(item), item))
+	if(ht8_put(ht, ht->getkey(value), value))
 		return -1;
 	return 0;
 }
@@ -301,7 +313,7 @@ void ht8_clean(struct ht8 *ht)
 int ht8_grow(struct ht8 *ht)
 {
 	assert(ht);
-	struct ht8 *newht = _create(ht->max_lg2 + 1, ht->getkey);
+	struct ht8 *newht = _create_with_sizelog2(ht->max_lg2 + 1, ht->getkey);
 	if (!newht)
 		return -1;
 	if (ht8_copy(newht, ht)){
@@ -315,7 +327,7 @@ int ht8_grow(struct ht8 *ht)
 	return 0;
 }
 
-void ht8_setfunc(struct ht8 *ht, const char *(*getkey)(void *item))
+void ht8_setfunc(struct ht8 *ht, const char *(*getkey)(void *value))
 {
 	assert(ht && getkey);
 	ht->getkey = getkey;
