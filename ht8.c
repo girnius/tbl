@@ -63,14 +63,15 @@ static int _list_add(struct ht8_list *l, void *value)
 	return 0;
 }
 
-static void *_list_get(struct ht8_list *l, struct ht8 *ht, const char *key)
+static void *_list_get(struct ht8_list *l, const char *(*getkey)(void *value),
+		const char *key)
 {
 	struct ht8_list *curr = l;
 	do{
 		for (int i =0; i < _LIST_ENTRIES_N; i++){
 			if (curr->entries[i]){
 				const char *entrykey =
-						ht->getkey(curr->entries[i]);
+						getkey(curr->entries[i]);
 				if (!strcmp(key, entrykey))
 					return curr->entries[i];
 			}
@@ -80,14 +81,15 @@ static void *_list_get(struct ht8_list *l, struct ht8 *ht, const char *key)
 	return NULL;
 }
 
-static void *_list_remove(struct ht8_list *l, struct ht8 *ht, const char *key)
+static void *_list_remove(struct ht8_list *l,const char *(*getkey)(void *value),
+							const char *key)
 {
 	struct ht8_list *curr = l;
 	do{
 		for (int i =0; i < _LIST_ENTRIES_N; i++){
 			if (curr->entries[i]){
 				const char *entrykey =
-						ht->getkey(curr->entries[i]);
+						getkey(curr->entries[i]);
 				if (!strcmp(key, entrykey)){
 					void *ret = curr->entries[i];
 					curr->entries[i] = NULL;
@@ -206,7 +208,8 @@ void *ht8_get(struct ht8 *ht, const char *key)
 			found = ht->t[pos].e2;
 		}else{
 			if (ht->t[pos].is_list == &ht->t[pos].is_list)
-				return _list_get(ht->t[pos].list, ht, key);
+				return _list_get(ht->t[pos].list, ht->getkey,
+								key);
 		}
 	}
 	if (!strcmp(ht->getkey(found), key))
@@ -229,7 +232,8 @@ void *ht8_remove(struct ht8 *ht, const char *key)
 			found = &ht->t[pos].e2;
 		}else{
 			if (ht->t[pos].is_list == &ht->t[pos].is_list){
-				return _list_remove(ht->t[pos].list, ht, key);
+				return _list_remove(ht->t[pos].list, ht->getkey,
+					       			key);
 			}else{
 				return NULL;
 			}
