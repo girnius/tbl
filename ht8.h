@@ -24,7 +24,7 @@ struct ht8;
 
 struct ht8 *ht8_create(const char *(*getkey)(void *value));
 
-int ht8_put(struct ht8 *ht, const char *key, void *value);
+int ht8_put(struct ht8 *ht, void *value);
 void *ht8_get(struct ht8 *ht, const char *key);
 void *ht8_remove(struct ht8 *ht, const char *key);
 

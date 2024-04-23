@@ -179,9 +179,10 @@ static int _put_with_hash(struct ht8 *ht, uint64_t hash, void *value)
 	return 0;
 }
 
-int ht8_put(struct ht8 *ht, const char *key, void *value)
+int ht8_put(struct ht8 *ht, void *value)
 {
 	assert(ht && key && value);
+	const char *key = ht->getkey(value);
 	uint64_t hash = XXH64(key, strlen(key), ht->seed);
 	if (ht->n_entries > (ht->max - (ht->max / HT8_MIN_FREE_BUCKETS_RATIO))){
 		ht8_grow(ht);
