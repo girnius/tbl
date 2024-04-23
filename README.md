@@ -1,4 +1,4 @@
-HT8
+tbl
 ===
 
 Fast and simple hash table. It grows automaticly as the number of entries
@@ -10,7 +10,7 @@ table, but are accessed via a user-defined function.
 
 For simple use cases where the value is a pointer to a NULL-terminated string
 or a structure with a NULL-terminated string as its first member, the
-user-defined function can be omitted by passing *NULL* to `ht8_create`.
+user-defined function can be omitted by passing *NULL* to `tbl_create`.
 
 
 Installation
@@ -25,7 +25,7 @@ API
 ---
 
 ```c
-struct ht8 *ht8_create(const char *(*getkey)(void *value));
+struct tbl *tbl_create(const char *(*getkey)(void *value));
 ```
 
 Allocates memory for the hash table on the heap and initializes it.
@@ -38,16 +38,16 @@ On success it returns a pointer to the hash table, otherwise it returns *NULL*.
 
 
 ```c
-int ht8_put(struct ht8 *ht. void *value);
+int tbl_put(struct tbl *t. void *value);
 ```
 
-Inserts `value` into the hash table `ht`.
+Inserts `value` into the hash table `t`.
 
 Returns 0 on success.
 
 
 ```c
-void *ht8_get(struct ht8 *ht. const char *key);
+void *tbl_get(struct tbl *t. const char *key);
 ```
 
 If the corresponding value to the `key` exists, it returns the value, otherwise
@@ -55,7 +55,7 @@ it returns *NULL*.
 
 
 ```c
-void *ht8_remove(struct ht8 *ht. const char *key);
+void *tbl_remove(struct tbl *t. const char *key);
 ```
 
 If the corresponding value to the `key` exists, it returns the value and
@@ -63,7 +63,7 @@ removes it from the table, otherwise it returns *NULL*.
 
 
 ```c
-int ht8_iterate(struct ht8 *ht, int (*iter)(void *value, void *ctx),
+int tbl_iterate(struct tbl *t, int (*iter)(void *value, void *ctx),
                 void *ctx);
 ```
 
@@ -72,7 +72,7 @@ Calls `iter` for every value in the table and passes the additional argument
 
 
 ```c
-int ht8_copy(struct ht8 *dest, struct ht8 *src);
+int tbl_copy(struct tbl *dest, struct tbl *src);
 ```
 
 Copies all values from `src` to `dest`.
@@ -81,24 +81,24 @@ Returns 0 on success.
 
 
 ```c
-int ht8_renew(struct ht8 *ht);
+int tbl_renew(struct tbl *t);
 ```
 
-Recreates the table `ht`. This can be used to shrink the table after the number
+Recreates the table `t`. This can be used to shrink the table after the number
 of values has reduced.
 
 On success it returns 0.
 
 
 ```c
-void ht8_clean(struct ht8 *ht);
+void tbl_clean(struct tbl *t);
 ```
 
 Removes all values from the table
 
 
 ```c
-int ht8_grow(struct ht8 *ht);
+int tbl_grow(struct tbl *t);
 ```
 
 Doubles the size of the table.
@@ -107,24 +107,24 @@ Returns 0 on success.
 
 
 ```c
-void ht8_setfunc(struct ht8 *ht, const char *(*getkey)(void *value));
+void tbl_setfunc(struct tbl *t, const char *(*getkey)(void *value));
 ```
 
-Sets `getkey` as the callback-function for the table `ht`.
+Sets `getkey` as the callback-function for the table `t`.
 
 
 ```c
-uint32_t ht8_getnum(struct ht8 *ht);
+uint32_t tbl_getnum(struct tbl *t);
 ```
 
-Returns the number of values in the table `ht`.
+Returns the number of values in the table `t`.
 
 
 ```c
-void ht8_free(struct ht8 *ht);
+void tbl_free(struct tbl *t);
 ```
 
-Frees the allocated memory of the table `ht`.
+Frees the allocated memory of the table `t`.
 
 Example
 -------

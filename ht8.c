@@ -1,4 +1,4 @@
-/* ht8: Fast and simple hash table
+/* tbl: Fast and simple hash table
  * Copyright (c) 2024 Vakaris Girnius <vakaris@girnius.dev>
  *
  * This source code is licensed under the zlib license (found in the
@@ -9,8 +9,8 @@
 #include <assert.h>
 #include <math.h>
 #include <string.h>
-#include "ht8.h"
-#include "ht8_list.h"
+#include "tbl.h"
+#include "tbl_list.h"
 
 #define XXH_INLINE_ALL 1
 #define XXH_NO_STREAM 1
@@ -19,19 +19,19 @@
 #define _IS_LIST(x) ((x) == &(x))
 #define _SET_IS_LIST(x) ((x) = &(x))
 
-struct ht8_bkt{
+struct tbl_bkt{
 	union{
 		void *e1;
-		struct ht8 *is_list;
+		struct tbl *is_list;
 	};
 	union{
 		void *e2;
-		struct ht8_list *list;
+		struct tbl_list *list;
 	};
 };
 
-struct ht8{
-	struct ht8_bkt *t;
+struct tbl{
+	struct tbl_bkt *a;
 	uint64_t seed;
 	uint64_t n_entries;
 	uint32_t max;
@@ -44,22 +44,23 @@ static uint32_t _hash_to_pos(int size_lg2, uint64_t hash)
 	return (uint32_t)hash & ~(UINT32_MAX << size_lg2);
 }
 
-static struct ht8* _create_with_sizelog2(uint32_t max_lg2, const char *(*getkey)(void *value))
+static struct tbl* _create_with_sizelog2(uint32_t max_lg2,
+					 const char *(*getkey)(void *value))
 {
-	struct ht8 *ht = malloc(sizeof(struct ht8));
-	if (!ht)
+	struct tbl *t = malloc(sizeof(struct tbl));
+	if (!t)
 		return NULL;
-	ht->max_lg2 = max_lg2;
-	ht->max = 1 << ht->max_lg2;
-	ht->t = calloc(0, sizeof(struct ht8_bkt) << ht->max_lg2);
-	if (!ht->t){
-		free(ht);
+	t->max_lg2 = max_lg2;
+	t->max = 1 << t->max_lg2;
+	t->a = calloc(0, sizeof(struct tbl_bkt) << t->max_lg2);
+	if (!t->a){
+		free(t);
 		return NULL;
 	}
-	ht->seed = (uint64_t)ht->t;
-	ht->n_entries = 0;
-	ht->getkey = getkey;
-	return ht;
+	t->seed = (uint64_t)t->a;
+	t->n_entries = 0;
+	t->getkey = getkey;
+	return t;
 }
 
 static const char *_getkey_default(void *value)
@@ -67,7 +68,7 @@ static const char *_getkey_default(void *value)
 	return (const char*)value;
 }
 
-struct ht8* ht8_create(const char *(*getkey)(void *value))
+struct tbl* tbl_create(const char *(*getkey)(void *value))
 {
 	if (getkey)
 		return _create_with_sizelog2(
@@ -79,92 +80,93 @@ struct ht8* ht8_create(const char *(*getkey)(void *value))
 }
 
 
-static int _put_with_hash(struct ht8 *ht, uint64_t hash, void *value)
+static int _put_with_hash(struct tbl *t, uint64_t hash, void *value)
 {
-	assert(ht && value);
-	uint32_t pos = _hash_to_pos(ht->max_lg2, hash);
-	if (!ht->t[pos].e1){
-		ht->t[pos].e1 = value;
-	}else if (!ht->t[pos].e2){
-		ht->t[pos].e2 = value;
+	assert(t && value);
+	uint32_t pos = _hash_to_pos(t->max_lg2, hash);
+	if (!t->a[pos].e1){
+		t->a[pos].e1 = value;
+	}else if (!t->a[pos].e2){
+		t->a[pos].e2 = value;
 	}else{
-		if (_IS_LIST(ht->t[pos].is_list)){
-			if (_list_add(ht->t[pos].list, value))
+		if (_IS_LIST(t->a[pos].is_list)){
+			if (_list_add(t->a[pos].list, value))
 				return -1;
 		}else{
-			struct ht8_list *l = _list_create();
+			struct tbl_list *l = _list_create();
 			if (!l)
 				return -1;
-			_list_add(l, ht->t[pos].e1);
-			_list_add(l, ht->t[pos].e2);
+			_list_add(l, t->a[pos].e1);
+			_list_add(l, t->a[pos].e2);
 			_list_add(l, value);
-			_SET_IS_LIST(ht->t[pos].is_list);
-			ht->t[pos].list = l;
+			_SET_IS_LIST(t->a[pos].is_list);
+			t->a[pos].list = l;
 		}
 	}
-	ht->n_entries++;
+	t->n_entries++;
 	return 0;
 }
 
-int ht8_put(struct ht8 *ht, void *value)
+int tbl_put(struct tbl *t, void *value)
 {
-	assert(ht && key && value);
-	const char *key = ht->getkey(value);
-	uint64_t hash = XXH64(key, strlen(key), ht->seed);
-	if (ht->n_entries > (ht->max - (ht->max / HT8_MIN_FREE_BUCKETS_RATIO))){
-		ht8_grow(ht);
+	assert(t && key && value);
+	const char *key = t->getkey(value);
+	uint64_t hash = XXH64(key, strlen(key), t->seed);
+	if (t->n_entries >
+			(t->max -(t->max / HT8_MIN_FREE_BUCKETS_RATIO))){
+		tbl_grow(t);
 	}
-	if (!_put_with_hash(ht, hash, value))
+	if (!_put_with_hash(t, hash, value))
 		return 0;
 	else
 		return -1;
 }
 
-void *ht8_get(struct ht8 *ht, const char *key)
+void *tbl_get(struct tbl *t, const char *key)
 {
-	assert(ht && key);
-	uint64_t hash = XXH64(key, strlen(key), ht->seed);
-	uint32_t pos = _hash_to_pos(ht->max_lg2, hash);
+	assert(t && key);
+	uint64_t hash = XXH64(key, strlen(key), t->seed);
+	uint32_t pos = _hash_to_pos(t->max_lg2, hash);
 	void *found;
-	if (!ht->t[pos].e2){
-		found = ht->t[pos].e1;
+	if (!t->a[pos].e2){
+		found = t->a[pos].e1;
 	}else{
-		if (!ht->t[pos].e1){
-			found = ht->t[pos].e2;
+		if (!t->a[pos].e1){
+			found = t->a[pos].e2;
 		}else{
-			if (_IS_LIST(ht->t[pos].is_list))
-				return _list_get(ht->t[pos].list, ht->getkey,
+			if (_IS_LIST(t->a[pos].is_list))
+				return _list_get(t->a[pos].list, t->getkey,
 								key);
 		}
 	}
-	if (!strcmp(ht->getkey(found), key))
+	if (!strcmp(t->getkey(found), key))
 		return found;
 	else
 		return NULL;
 }
 
-void *ht8_remove(struct ht8 *ht, const char *key)
+void *tbl_remove(struct tbl *t, const char *key)
 {
-	assert(ht && key);
-	uint64_t hash = XXH64(key, strlen(key), ht->seed);
-	uint32_t pos = _hash_to_pos(ht->max_lg2, hash);
+	assert(t && key);
+	uint64_t hash = XXH64(key, strlen(key), t->seed);
+	uint32_t pos = _hash_to_pos(t->max_lg2, hash);
 	void *ret;
 	void **found;
-	if (!ht->t[pos].e2){
-		found = &ht->t[pos].e1;
+	if (!t->a[pos].e2){
+		found = &t->a[pos].e1;
 	}else{
-		if (!ht->t[pos].e1){
-			found = &ht->t[pos].e2;
+		if (!t->a[pos].e1){
+			found = &t->a[pos].e2;
 		}else{
-			if (_IS_LIST(ht->t[pos].is_list)){
-				return _list_remove(ht->t[pos].list, ht->getkey,
-					       			key);
+			if (_IS_LIST(t->a[pos].is_list)){
+				return _list_remove(t->a[pos].list,
+						    t->getkey, key);
 			}else{
 				return NULL;
 			}
 		}
 	}
-	if (!strcmp(ht->getkey(*found), key)){
+	if (!strcmp(t->getkey(*found), key)){
 		ret = *found;
 		*found = NULL;
 		return ret;
@@ -173,26 +175,26 @@ void *ht8_remove(struct ht8 *ht, const char *key)
 	}
 }
 
-int ht8_iterate(struct ht8 *ht, int (*iter)(void *value, void *ctx), void *ctx)
+int tbl_iterate(struct tbl *t, int (*iter)(void *value, void *ctx), void *ctx)
 {
 	int ret = 0;
-	assert(ht && iter);
-	for (uint32_t i=0; i < ht->max; i++){
-		if (!_IS_LIST(ht->t[i].is_list)){
-			if (ht->t[i].e1){
-				if (ret = iter(ht->t[i].e1, ctx))
+	assert(t && iter);
+	for (uint32_t i=0; i < t->max; i++){
+		if (!_IS_LIST(t->a[i].is_list)){
+			if (t->a[i].e1){
+				if (ret = iter(t->a[i].e1, ctx))
 					return ret;
 			}
-			if (ht->t[i].e2){
-				if (ret = iter(ht->t[i].e2, ctx))
+			if (t->a[i].e2){
+				if (ret = iter(t->a[i].e2, ctx))
 					return ret;
 			}
 		}else{
-			struct ht8_list *curr = ht->t[i].list;
+			struct tbl_list *curr = t->a[i].list;
 			do{
 				for (int i=0; i < _LIST_ENTRIES_N; i++){
 					if (curr->entries[i]){
-						if (ret = iter(ht->t[i].e1,
+						if (ret = iter(t->a[i].e1,
 									ctx))
 							return ret;
 					}
@@ -207,85 +209,85 @@ int ht8_iterate(struct ht8 *ht, int (*iter)(void *value, void *ctx), void *ctx)
 static int _copy_iter(void *value, void *ctx)
 {
 	assert(value && ctx);
-	struct ht8 *ht = (struct ht8*)ctx;
-	if(ht8_put(ht, ht->getkey(value), value))
+	struct tbl *t = (struct tbl*)ctx;
+	if(tbl_put(t, t->getkey(value), value))
 		return -1;
 	return 0;
 }
-int ht8_copy(struct ht8 *dest, struct ht8 *src)
+int tbl_copy(struct tbl *dest, struct tbl *src)
 {
 	assert(src && dest);
-	return ht8_iterate(src, _copy_iter, dest);
+	return tbl_iterate(src, _copy_iter, dest);
 }
 
-int ht8_renew(struct ht8 *ht)
+int tbl_renew(struct tbl *t)
 {
-	assert(ht);
-	struct ht8 *newht = ht8_create(ht->getkey);
-	if (!newht)
+	assert(t);
+	struct tbl *new_t = tbl_create(t->getkey);
+	if (!new_t)
 		return -1;
-	if (ht8_copy(newht, ht)){
-		ht8_free(newht);
+	if (tbl_copy(new_t, t)){
+		tbl_free(new_t);
 		return -1;
 	}
-	void *oldtable = ht->t;
-	*ht = *newht;
-	free(newht);
-	free(oldtable);
+	void *old_a = t->a;
+	*t = *new_t;
+	free(new_t);
+	free(old_a);
 	return 0;
 }
 
-void ht8_clean(struct ht8 *ht)
+void tbl_clean(struct tbl *t)
 {
-	assert(ht);
-	for (uint32_t i=0; i < ht->max; i++){
-		if (_IS_LIST(ht->t[i].is_list))
-			_list_free(ht->t[i].list);
+	assert(t);
+	for (uint32_t i=0; i < t->max; i++){
+		if (_IS_LIST(t->a[i].is_list))
+			_list_free(t->a[i].list);
 	}
-	memset(ht->t, 0, ((sizeof(struct ht8_bkt) << ht->max_lg2) /
+	memset(t->a, 0, ((sizeof(struct tbl_bkt) << t->max_lg2) /
 				sizeof(unsigned char)));
 	return;
 }
 
-int ht8_grow(struct ht8 *ht)
+int tbl_grow(struct tbl *t)
 {
-	assert(ht);
-	struct ht8 *newht = _create_with_sizelog2(ht->max_lg2 + 1, ht->getkey);
+	assert(t);
+	struct tbl *newht = _create_with_sizelog2(t->max_lg2 + 1, t->getkey);
 	if (!newht)
 		return -1;
-	if (ht8_copy(newht, ht)){
-		ht8_free(newht);
+	if (tbl_copy(newht, t)){
+		tbl_free(newht);
 		return -1;
 	}
-	void *oldtable = ht->t;
-	*ht = *newht;
+	void *oldtable = t->a;
+	*t = *newht;
 	free(newht);
 	free(oldtable);
 	return 0;
 }
 
-void ht8_setfunc(struct ht8 *ht, const char *(*getkey)(void *value))
+void tbl_setfunc(struct tbl *t, const char *(*getkey)(void *value))
 {
-	assert(ht && getkey);
-	ht->getkey = getkey;
+	assert(t && getkey);
+	t->getkey = getkey;
 	return;
 }
 
-uint32_t ht8_getnum(struct ht8 *ht)
+uint32_t tbl_getnum(struct tbl *t)
 {
-	assert(ht);
-	return ht->n_entries;
+	assert(t);
+	return t->n_entries;
 }
 
-void ht8_free(struct ht8 *ht)
+void tbl_free(struct tbl *t)
 {
-	assert(ht);
-	for (uint32_t i=0; i < ht->max; i++){
-		if (_IS_LIST(ht->t[i].is_list))
-			_list_free(ht->t[i].list);
+	assert(t);
+	for (uint32_t i=0; i < t->max; i++){
+		if (_IS_LIST(t->a[i].is_list))
+			_list_free(t->a[i].list);
 	}
-	free(ht->t);
-	free(ht);
+	free(t->a);
+	free(t);
 	return;
 }
 
