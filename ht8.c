@@ -17,6 +17,9 @@
 
 #define _LIST_ENTRIES_N 4
 
+#define _IS_LIST(x) ((x) == &(x))
+#define _SET_IS_LIST(x) ((x) = &(x))
+
 struct ht8_list{
 	void *entries[_LIST_ENTRIES_N];
 	struct ht8_list *next;
@@ -163,7 +166,7 @@ static int _put_with_hash(struct ht8 *ht, uint64_t hash, void *value)
 	}else if (!ht->t[pos].e2){
 		ht->t[pos].e2 = value;
 	}else{
-		if (ht->t[pos].is_list == &ht->t[pos].is_list){
+		if (_IS_LIST(ht->t[pos].is_list)){
 			if (_list_add(ht->t[pos].list, value))
 				return -1;
 		}else{
@@ -173,7 +176,7 @@ static int _put_with_hash(struct ht8 *ht, uint64_t hash, void *value)
 			_list_add(l, ht->t[pos].e1);
 			_list_add(l, ht->t[pos].e2);
 			_list_add(l, value);
-			ht->t[pos].is_list = &ht->t[pos].is_list;
+			_SET_IS_LIST(ht->t[pos].is_list);
 			ht->t[pos].list = l;
 		}
 	}
@@ -207,7 +210,7 @@ void *ht8_get(struct ht8 *ht, const char *key)
 		if (!ht->t[pos].e1){
 			found = ht->t[pos].e2;
 		}else{
-			if (ht->t[pos].is_list == &ht->t[pos].is_list)
+			if (_IS_LIST(ht->t[pos].is_list))
 				return _list_get(ht->t[pos].list, ht->getkey,
 								key);
 		}
@@ -231,7 +234,7 @@ void *ht8_remove(struct ht8 *ht, const char *key)
 		if (!ht->t[pos].e1){
 			found = &ht->t[pos].e2;
 		}else{
-			if (ht->t[pos].is_list == &ht->t[pos].is_list){
+			if (_IS_LIST(ht->t[pos].is_list)){
 				return _list_remove(ht->t[pos].list, ht->getkey,
 					       			key);
 			}else{
@@ -253,7 +256,7 @@ int ht8_iterate(struct ht8 *ht, int (*iter)(void *value, void *ctx), void *ctx)
 	int ret = 0;
 	assert(ht && iter);
 	for (uint32_t i=0; i < ht->max; i++){
-		if (ht->t[i].is_list != ht){
+		if (!_IS_LIST(ht->t[i].is_list)){
 			if (ht->t[i].e1){
 				if (ret = iter(ht->t[i].e1, ctx))
 					return ret;
@@ -313,10 +316,11 @@ void ht8_clean(struct ht8 *ht)
 {
 	assert(ht);
 	for (uint32_t i=0; i < ht->max; i++){
-		if (ht->t[i].is_list == ht)
+		if (_IS_LIST(ht->t[i].is_list))
 			_list_free(ht->t[i].list);
 	}
-	memset(ht->t, 0, ((sizeof(struct ht8_bkt) << ht->max_lg2) / sizeof(unsigned char)));
+	memset(ht->t, 0, ((sizeof(struct ht8_bkt) << ht->max_lg2) /
+				sizeof(unsigned char)));
 	return;
 }
 
@@ -354,7 +358,7 @@ void ht8_free(struct ht8 *ht)
 {
 	assert(ht);
 	for (uint32_t i=0; i < ht->max; i++){
-		if (ht->t[i].is_list == ht)
+		if (_IS_LIST(ht->t[i].is_list))
 			_list_free(ht->t[i].list);
 	}
 	free(ht->t);
