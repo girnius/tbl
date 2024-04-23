@@ -112,6 +112,11 @@ static void _list_free(struct ht8_list *l)
 	return;
 }
 
+static uint32_t _hash_to_pos(int size_lg2, uint64_t hash)
+{
+	return (uint32_t)hash & ~(UINT32_MAX << size_lg2);
+}
+
 static struct ht8* _create_with_sizelog2(uint32_t max_lg2, const char *(*getkey)(void *value))
 {
 	struct ht8 *ht = malloc(sizeof(struct ht8));
@@ -147,16 +152,16 @@ struct ht8* ht8_create(const char *(*getkey)(void *value))
 }
 
 
-static int _put_with_hash(struct ht8 *ht, uint32_t hash, void *value)
+static int _put_with_hash(struct ht8 *ht, uint64_t hash, void *value)
 {
 	assert(ht && value);
-	uint32_t pos = (uint32_t)hash & ~(UINT32_MAX << ht->max_lg2);
+	uint32_t pos = _hash_to_pos(ht->max_lg2, hash);
 	if (!ht->t[pos].e1){
 		ht->t[pos].e1 = value;
 	}else if (!ht->t[pos].e2){
 		ht->t[pos].e2 = value;
 	}else{
-		if (ht->t[pos].is_list == ht){
+		if (ht->t[pos].is_list == &ht->t[pos].is_list){
 			if (_list_add(ht->t[pos].list, value))
 				return -1;
 		}else{
@@ -166,7 +171,7 @@ static int _put_with_hash(struct ht8 *ht, uint32_t hash, void *value)
 			_list_add(l, ht->t[pos].e1);
 			_list_add(l, ht->t[pos].e2);
 			_list_add(l, value);
-			ht->t[pos].is_list = ht;
+			ht->t[pos].is_list = &ht->t[pos].is_list;
 			ht->t[pos].list = l;
 		}
 	}
@@ -178,10 +183,10 @@ int ht8_put(struct ht8 *ht, const char *key, void *value)
 {
 	assert(ht && key && value);
 	uint64_t hash = XXH64(key, strlen(key), ht->seed);
-	if (ht->n_entries > ht->max - (ht->max / HT8_MIN_FREE_BUCKETS_RATIO)){
+	if (ht->n_entries > (ht->max - (ht->max / HT8_MIN_FREE_BUCKETS_RATIO))){
 		ht8_grow(ht);
 	}
-	if (!_put_with_hash(ht, (uint32_t)hash, value))
+	if (!_put_with_hash(ht, hash, value))
 		return 0;
 	else
 		return -1;
@@ -191,7 +196,7 @@ void *ht8_get(struct ht8 *ht, const char *key)
 {
 	assert(ht && key);
 	uint64_t hash = XXH64(key, strlen(key), ht->seed);
-	uint32_t pos = (uint32_t)hash & ~(UINT32_MAX << ht->max_lg2);
+	uint32_t pos = _hash_to_pos(ht->max_lg2, hash);
 	void *found;
 	if (!ht->t[pos].e2){
 		found = ht->t[pos].e1;
@@ -199,7 +204,7 @@ void *ht8_get(struct ht8 *ht, const char *key)
 		if (!ht->t[pos].e1){
 			found = ht->t[pos].e2;
 		}else{
-			if (ht->t[pos].is_list == ht)
+			if (ht->t[pos].is_list == &ht->t[pos].is_list)
 				return _list_get(ht->t[pos].list, ht, key);
 		}
 	}
@@ -213,7 +218,7 @@ void *ht8_remove(struct ht8 *ht, const char *key)
 {
 	assert(ht && key);
 	uint64_t hash = XXH64(key, strlen(key), ht->seed);
-	uint32_t pos = (uint32_t)hash & ~(UINT32_MAX << ht->max_lg2);
+	uint32_t pos = _hash_to_pos(ht->max_lg2, hash);
 	void *ret;
 	void **found;
 	if (!ht->t[pos].e2){
@@ -222,7 +227,7 @@ void *ht8_remove(struct ht8 *ht, const char *key)
 		if (!ht->t[pos].e1){
 			found = &ht->t[pos].e2;
 		}else{
-			if (ht->t[pos].is_list == ht){
+			if (ht->t[pos].is_list == &ht->t[pos].is_list){
 				return _list_remove(ht->t[pos].list, ht, key);
 			}else{
 				return NULL;
