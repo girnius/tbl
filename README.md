@@ -24,6 +24,8 @@ or
 API
 ---
 
+### create
+
 ```c
 struct tbl *tbl_create(const char *(*getkey)(void *value));
 ```
@@ -37,6 +39,8 @@ in the table are pointers to NULL-terminated strings.
 On success it returns a pointer to the hash table, otherwise it returns *NULL*.
 
 
+### put
+
 ```c
 int tbl_put(struct tbl *t. void *value);
 ```
@@ -46,6 +50,8 @@ Inserts `value` into the hash table `t`.
 Returns 0 on success.
 
 
+### get
+
 ```c
 void *tbl_get(struct tbl *t. const char *key);
 ```
@@ -54,6 +60,8 @@ If the corresponding value to the `key` exists, it returns the value, otherwise
 it returns *NULL*.
 
 
+### remove
+
 ```c
 void *tbl_remove(struct tbl *t. const char *key);
 ```
@@ -61,6 +69,8 @@ void *tbl_remove(struct tbl *t. const char *key);
 If the corresponding value to the `key` exists, it returns the value and
 removes it from the table, otherwise it returns *NULL*.
 
+
+### iterate
 
 ```c
 int tbl_iterate(struct tbl *t, int (*iter)(void *value, void *ctx),
@@ -71,6 +81,8 @@ Calls `iter` for every value in the table and passes the additional argument
 `ctx` for user-defined porposes.
 
 
+### copy
+
 ```c
 int tbl_copy(struct tbl *dest, struct tbl *src);
 ```
@@ -79,6 +91,8 @@ Copies all values from `src` to `dest`.
 
 Returns 0 on success.
 
+
+### renew
 
 ```c
 int tbl_renew(struct tbl *t);
@@ -90,12 +104,16 @@ of values has reduced.
 On success it returns 0.
 
 
+### clean
+
 ```c
 void tbl_clean(struct tbl *t);
 ```
 
 Removes all values from the table
 
+
+### grow
 
 ```c
 int tbl_grow(struct tbl *t);
@@ -106,6 +124,8 @@ Doubles the size of the table.
 Returns 0 on success.
 
 
+### setfunc
+
 ```c
 void tbl_setfunc(struct tbl *t, const char *(*getkey)(void *value));
 ```
@@ -113,12 +133,16 @@ void tbl_setfunc(struct tbl *t, const char *(*getkey)(void *value));
 Sets `getkey` as the callback-function for the table `t`.
 
 
+### getnum
+
 ```c
 uint32_t tbl_getnum(struct tbl *t);
 ```
 
 Returns the number of values in the table `t`.
 
+
+### free
 
 ```c
 void tbl_free(struct tbl *t);
