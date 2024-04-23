@@ -1,5 +1,5 @@
 /* ht8: Fast and simple hash table
- * Copyright (c) 2024 Vakaris Girnius <dev@girnius.me>
+ * Copyright (c) 2024 Vakaris Girnius <vakaris@girnius.dev>
  *
  * This source code is licensed under the zlib license (found in the
  * LICENSE file in this repository)

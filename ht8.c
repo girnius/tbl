@@ -1,5 +1,5 @@
 /* ht8: Fast and simple hash table
- * Copyright (c) 2024 Vakaris Girnius <dev@girnius.me>
+ * Copyright (c) 2024 Vakaris Girnius <vakaris@girnius.dev>
  *
  * This source code is licensed under the zlib license (found in the
  * LICENSE file in this repository)
@@ -192,7 +192,8 @@ int ht8_iterate(struct ht8 *ht, int (*iter)(void *value, void *ctx), void *ctx)
 			do{
 				for (int i=0; i < _LIST_ENTRIES_N; i++){
 					if (curr->entries[i]){
-						if (ret = iter(ht->t[i].e1, ctx))
+						if (ret = iter(ht->t[i].e1,
+									ctx))
 							return ret;
 					}
 				}
