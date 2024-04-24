@@ -9,33 +9,14 @@
 #include <assert.h>
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
 #include "tbl.h"
 
 #define XXH_INLINE_ALL 1
 #define XXH_NO_STREAM 1
 #include "xxhash.h"
 
-
 #define _LIST_ENTRIES_N 4
-
-struct tbl_list{
-	void *entries[_LIST_ENTRIES_N];
-	struct tbl_list *next;
-};
-
-static struct tbl_list *_list_create(void);
-static int _list_add(struct tbl_list *l, void *value);
-static void *_list_get(struct tbl_list *l,
-		       const char *(*getkey)(void *value),
-		       const char *key);
-static void *_list_remove(struct tbl_list *l,
-			  const char *(*getkey)(void *value),
-			  const char *key);
-static void _list_free(struct tbl_list *l);
-
-static int _is_list(struct tbl *t, struct tbl_bkt *b);
-static void _set_is_list(struct tbl *t, struct tbl_bkt *b);
-
 
 struct tbl_bkt{
 	union{
@@ -56,6 +37,26 @@ struct tbl{
 	uint32_t max_lg2;
 	const char *(*getkey)(void *value);
 };
+
+
+struct tbl_list{
+	void *entries[_LIST_ENTRIES_N];
+	struct tbl_list *next;
+};
+
+static struct tbl_list *_list_create(void);
+static int _list_add(struct tbl_list *l, void *value);
+static void *_list_get(struct tbl_list *l,
+		       const char *(*getkey)(void *value),
+		       const char *key);
+static void *_list_remove(struct tbl_list *l,
+			  const char *(*getkey)(void *value),
+			  const char *key);
+static void _list_free(struct tbl_list *l);
+
+static int _is_list(struct tbl *t, struct tbl_bkt *b);
+static void _set_is_list(struct tbl *t, struct tbl_bkt *b);
+
 
 static uint32_t _hash_to_pos(int size_lg2, uint64_t hash)
 {
