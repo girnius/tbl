@@ -10,11 +10,31 @@
 #include <math.h>
 #include <string.h>
 #include "tbl.h"
-#include "tbl_list.h"
 
 #define XXH_INLINE_ALL 1
 #define XXH_NO_STREAM 1
 #include "xxhash.h"
+
+
+#define _LIST_ENTRIES_N 4
+
+struct tbl_list{
+	void *entries[_LIST_ENTRIES_N];
+	struct tbl_list *next;
+};
+
+static struct tbl_list *_list_create(void);
+static int _list_add(struct tbl_list *l, void *value);
+static void *_list_get(struct tbl_list *l,
+		       const char *(*getkey)(void *value),
+		       const char *key);
+static void *_list_remove(struct tbl_list *l,
+			  const char *(*getkey)(void *value),
+			  const char *key);
+static void _list_free(struct tbl_list *l);
+
+static int _is_list(struct tbl *t, struct tbl_bkt *b);
+static void _set_is_list(struct tbl *t, struct tbl_bkt *b);
 
 
 struct tbl_bkt{
@@ -36,9 +56,6 @@ struct tbl{
 	uint32_t max_lg2;
 	const char *(*getkey)(void *value);
 };
-
-static int _is_list(struct tbl *t, struct tbl_bkt *b);
-static void _set_is_list(struct tbl *t, struct tbl_bkt *b);
 
 static uint32_t _hash_to_pos(int size_lg2, uint64_t hash)
 {
@@ -305,5 +322,79 @@ static void _set_is_list(struct tbl *t, struct tbl_bkt *b)
 {
 	assert(t && b);
 	b->is_list = t;
+	return;
+}
+
+static struct tbl_list *_list_create(void)
+{
+	return calloc(0, sizeof(struct tbl_list));
+}
+
+static int _list_add(struct tbl_list *l, void *value)
+{
+	for (int i=0; i < _LIST_ENTRIES_N; i++){
+		if (!l->entries[i]){
+			l->entries[i] = value;
+			return 0;
+		}
+	}
+	struct tbl_list *newlist = _list_create();
+	if (!newlist)
+		return -1;
+	l->next = newlist;
+	newlist->entries[0] = value;
+	return 0;
+}
+
+static void *_list_get(struct tbl_list *l,
+		       const char *(*getkey)(void *value),
+		       const char *key)
+{
+	struct tbl_list *curr = l;
+	do{
+		for (int i =0; i < _LIST_ENTRIES_N; i++){
+			if (curr->entries[i]){
+				const char *entrykey =
+						getkey(curr->entries[i]);
+				if (!strcmp(key, entrykey))
+					return curr->entries[i];
+			}
+		}
+		curr = curr->next;
+	}while (curr);
+	return NULL;
+}
+
+static void *_list_remove(struct tbl_list *l,
+			  const char *(*getkey)(void *value),
+			  const char *key)
+{
+	struct tbl_list *curr = l;
+	do{
+		for (int i =0; i < _LIST_ENTRIES_N; i++){
+			if (curr->entries[i]){
+				const char *entrykey =
+						getkey(curr->entries[i]);
+				if (!strcmp(key, entrykey)){
+					void *ret = curr->entries[i];
+					curr->entries[i] = NULL;
+					return ret;
+				}
+			}
+		}
+		curr = curr->next;
+	}while (curr);
+	return NULL;
+}
+
+static void _list_free(struct tbl_list *l)
+{
+	struct tbl_list *prev;
+	struct tbl_list *curr = l;
+	do{
+		prev = curr;
+		curr = curr->next;
+		free(prev);
+	}while (curr);
 	return;
 }
