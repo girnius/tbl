@@ -220,7 +220,7 @@ int tbl_copy(struct tbl *dest, struct tbl *src)
 	return tbl_iterate(src, _copy_iter, dest);
 }
 
-int tbl_renew(struct tbl *t)
+int tbl_recreate(struct tbl *t)
 {
 	assert(t);
 	struct tbl *new_t = tbl_create(t->getkey);

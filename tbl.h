@@ -31,7 +31,7 @@ void *tbl_remove(struct tbl *t, const char *key);
 int tbl_iterate(struct tbl *t, int (*iter)(void *value, void *ctx),
 		void *ctx);
 int tbl_copy(struct tbl *dest, struct tbl *src);
-int tbl_renew(struct tbl *t);
+int tbl_recreate(struct tbl *t);
 void tbl_clean(struct tbl *t);
 int tbl_grow(struct tbl *t);
 
