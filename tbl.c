@@ -321,16 +321,19 @@ static struct tbl_list *_list_create(void)
 
 static int _list_add(struct tbl_list *l, void *value)
 {
-	for (int i=0; i < _LIST_ENTRIES_N; i++){
-		if (!l->entries[i]){
-			l->entries[i] = value;
-			return 0;
+	struct tbl_list *curr = l;
+	do{
+		for (int i=0; i < _LIST_ENTRIES_N; i++){
+			if (!curr->entries[i]){
+				curr->entries[i] = value;
+				return 0;
+			}
 		}
-	}
+	}while (curr->next);
 	struct tbl_list *newlist = _list_create();
 	if (!newlist)
 		return -1;
-	l->next = newlist;
+	curr->next = newlist;
 	newlist->entries[0] = value;
 	return 0;
 }
