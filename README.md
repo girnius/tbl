@@ -156,7 +156,38 @@ Example
 -------
 
 ```c
-//TODO
+#include <stdlib.h>
+#include <assert.h>
+#include <string.h>
+#include "tbl.h"
 
+#define BUFSIZE 8
 
+struct person{
+    char name[BUFSIZE];
+    int age;
+};
+
+int main(void)
+{
+    struct person *p = malloc(sizeof(struct person));
+    assert(p);
+
+    strcpy(p->name, "Joe");
+    p->age = 25;
+
+    struct tbl *t = tbl_create(NULL);
+
+    assert(!tbl_put(t, p));
+
+    p = NULL;
+
+    assert(p = tbl_get(t, "Joe"));
+
+    assert(p->age == 25);
+
+    tbl_free(t);
+    free(p);
+    return 0;
+}
 ```
