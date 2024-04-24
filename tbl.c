@@ -7,7 +7,6 @@
 
 #include <stdint.h>
 #include <assert.h>
-#include <math.h>
 #include <string.h>
 #include <stdlib.h>
 #include "tbl.h"
@@ -90,12 +89,10 @@ static const char *_getkey_default(void *value)
 struct tbl* tbl_create(const char *(*getkey)(void *value))
 {
 	if (getkey)
-		return _create_with_sizelog2(
-				ceil(log2(TBL_DEFAULT_BUCKETS_N)), getkey);
+		return _create_with_sizelog2(TBL_DEFAULT_BUCKETS_N, getkey);
 	else
-		return _create_with_sizelog2(
-				ceil(log2(TBL_DEFAULT_BUCKETS_N)),
-						_getkey_default);
+		return _create_with_sizelog2(TBL_DEFAULT_BUCKETS_N,
+					     _getkey_default);
 }
 
 
@@ -201,11 +198,11 @@ int tbl_iterate(struct tbl *t, int (*iter)(void *value, void *ctx), void *ctx)
 	for (uint32_t i=0; i < t->max; i++){
 		if (!_is_list(t, t->a + i)){
 			if (t->a[i].e1){
-				if (ret = iter(t->a[i].e1, ctx))
+				if ((ret = iter(t->a[i].e1, ctx)))
 					return ret;
 			}
 			if (t->a[i].e2){
-				if (ret = iter(t->a[i].e2, ctx))
+				if ((ret = iter(t->a[i].e2, ctx)))
 					return ret;
 			}
 		}else{
@@ -213,8 +210,8 @@ int tbl_iterate(struct tbl *t, int (*iter)(void *value, void *ctx), void *ctx)
 			do{
 				for (int i=0; i < _LIST_ENTRIES_N; i++){
 					if (curr->entries[i]){
-						if (ret = iter(t->a[i].e1,
-									ctx))
+						if ((ret = iter(t->a[i].e1,
+									ctx)))
 							return ret;
 					}
 				}
