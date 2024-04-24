@@ -16,8 +16,6 @@
 #define XXH_NO_STREAM 1
 #include "xxhash.h"
 
-#define _IS_LIST(x) ((x) == &(x))
-#define _SET_IS_LIST(x) ((x) = &(x))
 
 struct tbl_bkt{
 	union{
@@ -38,6 +36,9 @@ struct tbl{
 	uint32_t max_lg2;
 	const char *(*getkey)(void *value);
 };
+
+static int _is_list(struct tbl *t, struct tbl_bkt *b);
+static void _set_is_list(struct tbl *t, struct tbl_bkt *b);
 
 static uint32_t _hash_to_pos(int size_lg2, uint64_t hash)
 {
@@ -89,7 +90,7 @@ static int _put_with_hash(struct tbl *t, uint64_t hash, void *value)
 	}else if (!t->a[pos].e2){
 		t->a[pos].e2 = value;
 	}else{
-		if (_IS_LIST(t->a[pos].is_list)){
+		if (_is_list(t, t->a + pos)){
 			if (_list_add(t->a[pos].list, value))
 				return -1;
 		}else{
@@ -99,7 +100,7 @@ static int _put_with_hash(struct tbl *t, uint64_t hash, void *value)
 			_list_add(l, t->a[pos].e1);
 			_list_add(l, t->a[pos].e2);
 			_list_add(l, value);
-			_SET_IS_LIST(t->a[pos].is_list);
+			_set_is_list(t, t->a + pos);
 			t->a[pos].list = l;
 		}
 	}
@@ -134,7 +135,7 @@ void *tbl_get(struct tbl *t, const char *key)
 		if (!t->a[pos].e1){
 			found = t->a[pos].e2;
 		}else{
-			if (_IS_LIST(t->a[pos].is_list))
+			if (_is_list(t, t->a + pos))
 				return _list_get(t->a[pos].list, t->getkey,
 								key);
 		}
@@ -158,7 +159,7 @@ void *tbl_remove(struct tbl *t, const char *key)
 		if (!t->a[pos].e1){
 			found = &t->a[pos].e2;
 		}else{
-			if (_IS_LIST(t->a[pos].is_list)){
+			if (_is_list(t, t->a + pos)){
 				return _list_remove(t->a[pos].list,
 						    t->getkey, key);
 			}else{
@@ -180,7 +181,7 @@ int tbl_iterate(struct tbl *t, int (*iter)(void *value, void *ctx), void *ctx)
 	int ret = 0;
 	assert(t && iter);
 	for (uint32_t i=0; i < t->max; i++){
-		if (!_IS_LIST(t->a[i].is_list)){
+		if (!_is_list(t, t->a + i)){
 			if (t->a[i].e1){
 				if (ret = iter(t->a[i].e1, ctx))
 					return ret;
@@ -241,7 +242,7 @@ void tbl_clean(struct tbl *t)
 {
 	assert(t);
 	for (uint32_t i=0; i < t->max; i++){
-		if (_IS_LIST(t->a[i].is_list))
+		if (_is_list(t, t->a + i))
 			_list_free(t->a[i].list);
 	}
 	memset(t->a, 0, ((sizeof(struct tbl_bkt) << t->max_lg2) /
@@ -283,7 +284,7 @@ void tbl_free(struct tbl *t)
 {
 	assert(t);
 	for (uint32_t i=0; i < t->max; i++){
-		if (_IS_LIST(t->a[i].is_list))
+		if (_is_list(t, t->a + i))
 			_list_free(t->a[i].list);
 	}
 	free(t->a);
@@ -291,3 +292,18 @@ void tbl_free(struct tbl *t)
 	return;
 }
 
+static int _is_list(struct tbl *t, struct tbl_bkt *b)
+{
+	assert(t && b);
+	if (b->is_list == t)
+		return 1;
+	else
+		return 0;
+}
+
+static void _set_is_list(struct tbl *t, struct tbl_bkt *b)
+{
+	assert(t && b);
+	b->is_list = t;
+	return;
+}
