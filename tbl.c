@@ -73,10 +73,10 @@ struct tbl* tbl_create(const char *(*getkey)(void *value))
 {
 	if (getkey)
 		return _create_with_sizelog2(
-				ceil(log2(HT8_DEFAULT_BUCKETS_N)), getkey);
+				ceil(log2(TBL_DEFAULT_BUCKETS_N)), getkey);
 	else
 		return _create_with_sizelog2(
-				ceil(log2(HT8_DEFAULT_BUCKETS_N)),
+				ceil(log2(TBL_DEFAULT_BUCKETS_N)),
 						_getkey_default);
 }
 
@@ -114,7 +114,7 @@ int tbl_put(struct tbl *t, void *value)
 	const char *key = t->getkey(value);
 	uint64_t hash = XXH64(key, strlen(key), t->seed);
 	if (t->n_entries >
-			(t->max -(t->max / HT8_MIN_FREE_BUCKETS_RATIO))){
+			(t->max -(t->max / TBL_MIN_FREE_BUCKETS_RATIO))){
 		tbl_grow(t);
 	}
 	if (!_put_with_hash(t, hash, value))
