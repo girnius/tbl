@@ -10,15 +10,17 @@ table, but are accessed via a user-defined function.
 
 For simple use cases where the value is a pointer to a NULL-terminated string
 or a structure with a NULL-terminated string as its first member, the
-user-defined function can be omitted by passing NULL* to `tbl_create`.
+user-defined function can be omitted by passing NULL to `tbl_create`.
 
 
 Installation
 ------------
 
 * Use git submodule or subtree to add the library to your project
+
 or
-* Simply copy all files from `src/` into your project.
+
+* Simply copy all files into your project.
 
 
 API
