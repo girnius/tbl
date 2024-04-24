@@ -144,17 +144,14 @@ void *tbl_get(struct tbl *t, const char *key)
 	uint64_t hash = XXH64(key, strlen(key), t->seed);
 	uint32_t pos = _hash_to_pos(t->max_lg2, hash);
 	void *found;
-	if (!t->a[pos].e2){
+	if (_is_list(t, t->a + pos))
+		return _list_get(t->a[pos].list, t->getkey, key);
+	if (t->a[pos].e1)
 		found = t->a[pos].e1;
-	}else{
-		if (!t->a[pos].e1){
-			found = t->a[pos].e2;
-		}else{
-			if (_is_list(t, t->a + pos))
-				return _list_get(t->a[pos].list, t->getkey,
-								key);
-		}
-	}
+	else if (t->a[pos].e2)
+		found = t->a[pos].e2;
+	else
+		return NULL;
 	if (!strcmp(t->getkey(found), key))
 		return found;
 	else
@@ -168,20 +165,14 @@ void *tbl_remove(struct tbl *t, const char *key)
 	uint32_t pos = _hash_to_pos(t->max_lg2, hash);
 	void *ret;
 	void **found;
-	if (!t->a[pos].e2){
+	if (_is_list(t, t->a + pos))
+		return _list_remove(t->a[pos].list, t->getkey, key);
+	if (t->a[pos].e1)
 		found = &t->a[pos].e1;
-	}else{
-		if (!t->a[pos].e1){
-			found = &t->a[pos].e2;
-		}else{
-			if (_is_list(t, t->a + pos)){
-				return _list_remove(t->a[pos].list,
-						    t->getkey, key);
-			}else{
-				return NULL;
-			}
-		}
-	}
+	else if (t->a[pos].e2)
+		found = &t->a[pos].e2;
+	else
+		return NULL;
 	if (!strcmp(t->getkey(*found), key)){
 		ret = *found;
 		*found = NULL;
