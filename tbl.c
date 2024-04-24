@@ -128,7 +128,7 @@ static int _put_with_hash(struct tbl *t, uint64_t hash, void *value)
 
 int tbl_put(struct tbl *t, void *value)
 {
-	assert(t && key && value);
+	assert(t && value);
 	const char *key = t->getkey(value);
 	uint64_t hash = XXH64(key, strlen(key), t->seed);
 	if (t->n_entries >
@@ -229,7 +229,7 @@ static int _copy_iter(void *value, void *ctx)
 {
 	assert(value && ctx);
 	struct tbl *t = (struct tbl*)ctx;
-	if(tbl_put(t, t->getkey(value), value))
+	if(tbl_put(t, value))
 		return -1;
 	return 0;
 }
