@@ -94,10 +94,10 @@ Copies all values from `src` to `dest`.
 Returns 0 on success.
 
 
-### tbl_renew
+### tbl_recreate
 
 ```c
-int tbl_renew(struct tbl *t);
+int tbl_recreate(struct tbl *t);
 ```
 
 Recreates the table `t`. This can be used to shrink the table after the number
