@@ -1,8 +1,22 @@
 /* tbl: Fast and simple hash table
+ * -------------------------------
  * Copyright (c) 2024 Vakaris Girnius <vakaris@girnius.dev>
  *
- * This source code is licensed under the zlib license (found in the
- * LICENSE file in this repository)
+ * This software is provided 'as-is', without any express or implied
+ * warranty.  In no event will the authors be held liable for any damages
+ * arising from the use of this software.
+ *
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ *
+ * 1. The origin of this software must not be misrepresented; you must not
+ *    claim that you wrote the original software. If you use this software
+ *    in a product, an acknowledgment in the product documentation would be
+ *    appreciated but is not required.
+ * 2. Altered source versions must be plainly marked as such, and must not be
+ *    misrepresented as being the original software.
+ * 3. This notice may not be removed or altered from any source distribution.
 */
 
 #ifndef TBL_H
@@ -10,34 +24,31 @@
 
 #include <stdint.h>
 
-#ifndef TBL_DEFAULT_BUCKETS_N
- #define TBL_DEFAULT_BUCKETS_N 8
-#endif
+struct tbl_bkt{
+	void *value;
+	uint32_t hash;
+	uint32_t maxoff;
+};
 
-#define TBL_ENTRIES_PER_BUCKET 2
+struct tbl{
+        uint64_t seed;
+        uint32_t n;
+        uint32_t max;
+        uint16_t max_lg2;
+        uint16_t keylen;
+        uint32_t hashmask;
+        struct tbl_bkt a[];
+};
 
-#ifndef TBL_MIN_FREE_BUCKETS_RATIO 
- #define TBL_MIN_FREE_BUCKETS_RATIO 4
-#endif
+#define TBL_MAX UINT32_MAX
+#define TBL_MAX_LOG2 32
 
-struct tbl;
-
-struct tbl *tbl_create(const char *(*getkey)(void *value));
+void tbl_init(struct tbl *t, uint16_t len_lg2, uint16_t keylen);
 
 int tbl_put(struct tbl *t, void *value);
 void *tbl_get(struct tbl *t, const char *key);
 void *tbl_remove(struct tbl *t, const char *key);
 
-int tbl_iterate(struct tbl *t, int (*iter)(void *value, void *ctx),
-		void *ctx);
 int tbl_copy(struct tbl *dest, struct tbl *src);
-int tbl_recreate(struct tbl *t);
-void tbl_clean(struct tbl *t);
-int tbl_grow(struct tbl *t);
-
-void tbl_setfunc(struct tbl *t, const char *(*getkey)(void *value));
-uint32_t tbl_getnum(struct tbl *t);
-
-void tbl_free(struct tbl *t);
 
 #endif /* tbl.h */
