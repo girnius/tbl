@@ -49,6 +49,6 @@ int tbl_put(struct tbl *t, void *value);
 void *tbl_get(struct tbl *t, const char *key);
 void *tbl_remove(struct tbl *t, const char *key);
 
-int tbl_copy(struct tbl *dest, struct tbl *src);
+void tbl_copy(struct tbl *dest, struct tbl *src);
 
 #endif /* tbl.h */

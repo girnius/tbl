@@ -30,7 +30,7 @@
 
 void tbl_init(struct tbl *t, uint16_t n_lg2, uint16_t keylen)
 {
-	assert(t && len_lg2 && keylen);
+	assert(t && n_lg2 && keylen);
 	if (t->n)
 		memset(t->a, 0, sizeof(struct tbl_bkt) << n_lg2);
 	if (!t->seed)
@@ -41,7 +41,7 @@ void tbl_init(struct tbl *t, uint16_t n_lg2, uint16_t keylen)
 	t->max = 1 << n_lg2;
 	t->max_lg2 = n_lg2;
 	t->keylen = keylen;
-	t->hashmask = ~(UINT32_MAX << len_lg2);
+	t->hashmask = ~(UINT32_MAX << n_lg2);
 	return;
 }
 
