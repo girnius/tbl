@@ -43,7 +43,7 @@ struct tbl{
 #define TBL_MAX UINT32_MAX
 #define TBL_MAX_LOG2 32
 
-void tbl_init(struct tbl *t, uint16_t len_lg2, uint16_t keylen);
+void tbl_init(struct tbl *t, uint16_t n_lg2, uint16_t keylen);
 
 int tbl_put(struct tbl *t, void *value);
 void *tbl_get(struct tbl *t, const char *key);
