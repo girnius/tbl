@@ -48,7 +48,7 @@ void tbl_init(struct tbl *t, uint16_t n_lg2, uint16_t keylen)
 int tbl_put(struct tbl *t, void *value)
 {
 	assert(t && value);
-	uint32_t hash = (uint32_t)XXH64((char*)value, t->keylen, t->seed);
+	uint32_t hash = (uint32_t)XXH3_64bits_withSeed((char*)value, t->keylen, t->seed);
 	uint32_t pos = hash & t->hashmask;
 	uint32_t off = 0;
 	if (t->n == t->max)
@@ -70,7 +70,7 @@ int tbl_put(struct tbl *t, void *value)
 void *tbl_get(struct tbl *t, const char *key)
 {
 	assert(t && key);
-	uint32_t hash = (uint32_t)XXH64(key, t->keylen, t->seed);
+	uint32_t hash = (uint32_t)XXH3_64bits_withSeed(key, t->keylen, t->seed);
 	uint32_t pos = hash & t->hashmask;
 
 	for (uint32_t off=t->a[pos].maxoff; off >= 0; off--){
@@ -86,7 +86,7 @@ void *tbl_get(struct tbl *t, const char *key)
 void *tbl_remove(struct tbl *t, const char *key)
 {
 	assert(t && key);
-	uint32_t hash = (uint32_t)XXH64(key, t->keylen, t->seed);
+	uint32_t hash = (uint32_t)XXH3_64bits_withSeed(key, t->keylen, t->seed);
 	uint32_t pos = hash & t->hashmask;
 	void *found;
 
