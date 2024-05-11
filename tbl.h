@@ -31,19 +31,19 @@ struct tbl_bkt{
 };
 
 struct tbl{
+        struct tbl_bkt *a;
         uint64_t seed;
         uint32_t n;
         uint32_t max;
         uint16_t max_lg2;
         uint16_t keylen;
         uint32_t hashmask;
-        struct tbl_bkt a[];
 };
 
 #define TBL_MAX UINT32_MAX
 #define TBL_MAX_LOG2 32
 
-void tbl_init(struct tbl *t, uint16_t n_lg2, uint16_t keylen);
+void tbl_init(struct tbl *t, struct tbl_bkt *array, uint16_t n_lg2, uint16_t keylen);
 
 int tbl_put(struct tbl *t, void *value);
 void *tbl_get(struct tbl *t, const char *key);

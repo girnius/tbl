@@ -28,15 +28,16 @@
 #define XXH_NO_STREAM 1
 #include "xxhash.h"
 
-void tbl_init(struct tbl *t, uint16_t n_lg2, uint16_t keylen)
+void tbl_init(struct tbl *t, struct tbl_bkt *array, uint16_t n_lg2, uint16_t keylen)
 {
-	assert(t && n_lg2 && keylen);
+	assert(t && array && n_lg2 && keylen);
 	if (t->n)
-		memset(t->a, 0, sizeof(struct tbl_bkt) << n_lg2);
+		memset(array, 0, sizeof(struct tbl_bkt) << n_lg2);
 	if (!t->seed)
 		t->seed = (uint64_t)t ^ keylen;
 	else
 		t->seed++;
+	t->a = array;
 	t->n = 0;
 	t->max = 1 << n_lg2;
 	t->max_lg2 = n_lg2;
