@@ -22,28 +22,25 @@
 #ifndef TBL_H
 #define TBL_H
 
-#include <stdint.h>
-
 struct tbl_bkt{
 	void *value;
-	uint32_t hash;
-	uint32_t maxoff;
+	unsigned int hash;
+	unsigned int maxoff;
 };
 
 struct tbl{
         struct tbl_bkt *a;
-        uint64_t seed;
-        uint32_t n;
-        uint32_t max;
-        uint16_t max_lg2;
-        uint16_t keylen;
-        uint32_t hashmask;
+        unsigned long seed;
+        unsigned int n;
+        unsigned int max;
+        unsigned short max_lg2;
+        unsigned short keylen;
+        unsigned int hashmask;
 };
 
-#define TBL_MAX UINT32_MAX
-#define TBL_MAX_LOG2 32
+#define TBL_MAX ULONG_MAX
 
-void tbl_init(struct tbl *t, struct tbl_bkt *array, uint16_t n_lg2, uint16_t keylen);
+void tbl_init(struct tbl *t, struct tbl_bkt *array, unsigned short n_lg2, unsigned short keylen);
 
 int tbl_put(struct tbl *t, void *value);
 void *tbl_get(struct tbl *t, const char *key);
