@@ -22,6 +22,11 @@
 #ifndef TBL_H
 #define TBL_H
 
+#define TBL_VERSION_MAJOR 0
+#define TBL_VERSION_MINOR 1
+
+#define TBL_MAX ULONG_MAX
+
 struct tbl_bkt{
 	void *value;
 	unsigned int hash;
@@ -37,8 +42,6 @@ struct tbl{
         unsigned short keylen;
         unsigned int hashmask;
 };
-
-#define TBL_MAX ULONG_MAX
 
 void tbl_init(struct tbl *t, struct tbl_bkt *array, unsigned short n_lg2, unsigned short keylen);
 
