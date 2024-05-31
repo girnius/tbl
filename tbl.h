@@ -22,8 +22,7 @@
 #ifndef TBL_H
 #define TBL_H
 
-#define TBL_VERSION_MAJOR 0
-#define TBL_VERSION_MINOR 1
+#define TBL_VERSION_STR "0.1"
 
 #define TBL_MAX ULONG_MAX
 
