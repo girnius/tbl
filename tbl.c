@@ -1,5 +1,5 @@
-/* tbl: Fast and simple hash table
- * -------------------------------
+/* tbl: Dynamic hash table
+ * -----------------------
  * Copyright (c) 2024 Vakaris Girnius <vakaris@girnius.dev>
  *
  * This software is provided 'as-is', without any express or implied
@@ -19,15 +19,16 @@
  * 3. This notice may not be removed or altered from any source distribution.
 */
 
-#include <assert.h>
+#include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "tbl.h"
 
 #define XXH_INLINE_ALL 1
 #define XXH_NO_STREAM 1
 #include "xxhash.h"
 
-void tbl_init(struct tbl *t, struct tbl_bkt *array, unsigned short n_lg2, unsigned short keylen)
+static inline void _init(struct tbl *t, struct tbl_bkt *array, unsigned short n_lg2, unsigned short keylen)
 {
 	assert(t && array && n_lg2 && keylen);
 	if (t->n)
@@ -45,7 +46,7 @@ void tbl_init(struct tbl *t, struct tbl_bkt *array, unsigned short n_lg2, unsign
 	return;
 }
 
-int tbl_put(struct tbl *t, void *value)
+static inline int _put(struct tbl *t, void *value)
 {
 	assert(t && value);
 	unsigned int hash = (unsigned int)XXH3_64bits_withSeed((char*)value, t->keylen, t->seed);
@@ -67,7 +68,7 @@ int tbl_put(struct tbl *t, void *value)
 	return 0;
 }
 
-void *tbl_get(struct tbl *t, const char *key)
+static inline void *_get(struct tbl *t, const char *key)
 {
 	assert(t && key);
 	unsigned int hash = (unsigned int)XXH3_64bits_withSeed(key, t->keylen, t->seed);
@@ -83,7 +84,7 @@ void *tbl_get(struct tbl *t, const char *key)
 	return NULL;
 }
 
-void *tbl_remove(struct tbl *t, const char *key)
+static inline void *_remove(struct tbl *t, const char *key)
 {
 	assert(t && key);
 	unsigned int hash = (unsigned int)XXH3_64bits_withSeed(key, t->keylen, t->seed);
@@ -104,13 +105,83 @@ void *tbl_remove(struct tbl *t, const char *key)
 	return NULL;
 }
 
-void tbl_copy(struct tbl *dest, struct tbl *src)
+static inline void _copy(struct tbl *dest, struct tbl *src)
 {
 	assert(src && dest);
 	assert(dest->max >= src->max);
 	for (unsigned int i=0; i != src->max; i++){
 		if (src->a[i].value)
-			tbl_put(dest, src->a[i].value);
+			_put(dest, src->a[i].value);
 	}
+	return;
+}
+
+struct tbl *tbl_create(unsigned short keylen)
+{
+	assert(keylen);
+	struct tbl *t = malloc(sizeof(struct tbl));
+	if (!t)
+		return NULL;
+	struct tbl_bkt *array = malloc(sizeof(struct tbl_bkt) * TBL_DEFAULT_SIZE);
+	if (!array){
+		free(t);
+		return NULL;
+	}
+	_init(t, array, TBL_DEFAULT_SIZE_LG2, keylen);
+	return t;
+}
+
+int tbl_put(struct tbl *t, void *value)
+{
+	assert(t && value);
+	if (t->max >> TBL_FREE_BUCKET_RATIO_LG2 != t->max - t->n){
+		return _put(t, value);
+	}else{
+		if (tbl_grow(t) && _put(t, value))
+			return -1;
+	}
+}
+
+void *tbl_get(struct tbl *t, const char *key)
+{
+	return _get(t, key);
+}
+
+void *tbl_remove(struct tbl *t, const char *key)
+{
+	return _remove(t, key);
+}
+
+int tbl_grow(struct tbl *t)
+{
+	assert(t);
+	struct tbl old_t;
+	struct tbl_bkt *array = malloc(sizeof(struct tbl_bkt) << (t->max_lg2 + 1));
+	if (!array){
+		return -1;
+	}
+	memcpy(&old_t, t, sizeof(struct tbl));
+	memset(t, 0, sizeof(struct tbl));
+	_init(t, array, (t->max_lg2 + 1), t->keylen);
+	_copy(t, &old_t);
+	free(old_t.a);
+	return 0;
+}
+
+int tbl_copy(struct tbl *dest, struct tbl *src)
+{
+	assert(dest && src);
+	while (dest->max < src->max){
+		if (tbl_grow(dest))
+			return -1;
+	}
+	_copy(dest, src);
+	return 0;
+}
+
+void tbl_free(struct tbl *t)
+{
+	free(t->a);
+	free(t);
 	return;
 }
