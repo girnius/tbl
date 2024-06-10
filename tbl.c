@@ -110,7 +110,7 @@ void tbl_copy(struct tbl *dest, struct tbl *src)
 	assert(dest->max >= src->max);
 	for (unsigned int i=0; i != src->max; i++){
 		if (src->a[i].value)
-			assert(tbl_put(dest, src->a[i].value) == 0);
+			tbl_put(dest, src->a[i].value);
 	}
 	return;
 }
