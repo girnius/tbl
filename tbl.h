@@ -24,7 +24,7 @@
 
 #include <limits.h>
 
-#define TBL_VERSION_STR "0.2"
+#define TBL_VERSION_STR "0.3"
 
 #ifndef TBL_DEFAULT_SIZE
 #define TBL_DEFAULT_SIZE 8
@@ -49,12 +49,11 @@ struct tbl{
         unsigned long seed;
         unsigned int n;
         unsigned int max;
-        unsigned short max_lg2;
-        unsigned short keylen;
+        unsigned int max_lg2;
         unsigned int hashmask;
 };
 
-struct tbl *tbl_create(unsigned short keylen);
+struct tbl *tbl_create(void);
 
 int tbl_put(struct tbl *t, void *value);
 void *tbl_get(struct tbl *t, const char *key);

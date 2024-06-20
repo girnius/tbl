@@ -28,20 +28,16 @@
 #define XXH_NO_STREAM 1
 #include "xxhash.h"
 
-static inline void _init(struct tbl *t, struct tbl_bkt *array, unsigned short n_lg2, unsigned short keylen)
+static inline void _init(struct tbl *t, struct tbl_bkt *array, unsigned int n_lg2)
 {
-	assert(t && array && n_lg2 && keylen);
+	assert(t && array && n_lg2);
 	if (t->n)
 		memset(array, 0, sizeof(struct tbl_bkt) << n_lg2);
-	if (!t->seed)
-		t->seed = (unsigned long)t ^ keylen;
-	else
-		t->seed++;
+	t->seed = (unsigned long)t;
 	t->a = array;
 	t->n = 0;
 	t->max = 1 << n_lg2;
 	t->max_lg2 = n_lg2;
-	t->keylen = keylen;
 	t->hashmask = ~(ULONG_MAX << n_lg2);
 	return;
 }
@@ -49,7 +45,7 @@ static inline void _init(struct tbl *t, struct tbl_bkt *array, unsigned short n_
 static inline int _put(struct tbl *t, void *value)
 {
 	assert(t && value);
-	unsigned int hash = (unsigned int)XXH3_64bits_withSeed((char*)value, t->keylen, t->seed);
+	unsigned int hash = (unsigned int)XXH3_64bits_withSeed((char*)value, strlen((char*)value), t->seed);
 	unsigned int pos = hash & t->hashmask;
 	unsigned int off = 0;
 	if (t->n == t->max)
@@ -71,12 +67,13 @@ static inline int _put(struct tbl *t, void *value)
 static inline void *_get(struct tbl *t, const char *key)
 {
 	assert(t && key);
-	unsigned int hash = (unsigned int)XXH3_64bits_withSeed(key, t->keylen, t->seed);
+	size_t keylen = strlen(key);
+	unsigned int hash = (unsigned int)XXH3_64bits_withSeed(key, keylen, t->seed);
 	unsigned int pos = hash & t->hashmask;
 
 	for (unsigned int off=t->a[pos].maxoff; off >= 0; off--){
 		if (t->a[pos].value && hash == t->a[pos].hash){
-			if (!(memcmp(key, t->a[pos].value, t->keylen)))
+			if (!(memcmp(key, t->a[pos].value, keylen)))
 				return t->a[pos].value;
 		}
 		pos = (pos+1) & t->hashmask;
@@ -87,13 +84,14 @@ static inline void *_get(struct tbl *t, const char *key)
 static inline void *_remove(struct tbl *t, const char *key)
 {
 	assert(t && key);
-	unsigned int hash = (unsigned int)XXH3_64bits_withSeed(key, t->keylen, t->seed);
+	size_t keylen = strlen(key);
+	unsigned int hash = (unsigned int)XXH3_64bits_withSeed(key, keylen, t->seed);
 	unsigned int pos = hash & t->hashmask;
 	void *found;
 
 	for (unsigned int off=t->a[pos].maxoff; off >= 0; off--){
 		if (t->a[pos].value && hash == t->a[pos].hash){
-			if (!(memcmp(key, t->a[pos].value, t->keylen))){
+			if (!(memcmp(key, t->a[pos].value, keylen))){
 				found = t->a[pos].value;
 				t->a[pos].value = NULL;
 				t->n--;
@@ -116,9 +114,8 @@ static inline void _copy(struct tbl *dest, struct tbl *src)
 	return;
 }
 
-struct tbl *tbl_create(unsigned short keylen)
+struct tbl *tbl_create(void)
 {
-	assert(keylen);
 	struct tbl *t = malloc(sizeof(struct tbl));
 	if (!t)
 		return NULL;
@@ -127,7 +124,7 @@ struct tbl *tbl_create(unsigned short keylen)
 		free(t);
 		return NULL;
 	}
-	_init(t, array, TBL_DEFAULT_SIZE_LG2, keylen);
+	_init(t, array, TBL_DEFAULT_SIZE_LG2);
 	return t;
 }
 
@@ -162,7 +159,7 @@ int tbl_grow(struct tbl *t)
 	}
 	memcpy(&old_t, t, sizeof(struct tbl));
 	memset(t, 0, sizeof(struct tbl));
-	_init(t, array, (t->max_lg2 + 1), t->keylen);
+	_init(t, array, (t->max_lg2 + 1));
 	_copy(t, &old_t);
 	free(old_t.a);
 	return 0;
